@@ -5,3 +5,6 @@ edition = "2024"
 license = "MIT"
 description = "Source checks for repository-owned Rust architecture policies"
 publish = false
+
+[dependencies]
+serde_json = "1"

@@ -20,7 +20,7 @@ path methods, scan escapes and non-ASCII identifiers. It skips recognized inline
 `env!`. It does not expand macros, resolve types, scan dependency internals or
 prove transitive purity. Same-named path methods may be reported on other types.
 The graph module adds source coverage and crate-local import direction checks.
-Root profiles, package dependency graphs and publication remain outside this slice. The private tokenizer is retained from Workforest;
+Root profiles and publication remain outside this slice. The private tokenizer is retained from Workforest;
 unmigrated donor checks remain in that product until separately transferred.
 
 This checkout currently has no published remote. Consumer pins to its local Git
@@ -42,3 +42,25 @@ not followed. Unknown paths fall back to the crate root, as in the donor.
 Graph discovery does not prove a complete semantic import graph or absence of
 cycles. Tests cover multi-crate identities, ordinary scanner forms, valid policy
 and every inventory/exception rejection class.
+
+## Metadata and package dependencies
+
+`metadata::parse_members` parses caller-supplied Cargo format-1 JSON and selects
+explicit workspace IDs, rejecting missing/duplicate IDs and malformed records.
+Each listed member accepts caller-read manifest text through `with_manifest`.
+The engine never runs Cargo or opens those paths. `manifest` retains the donor's
+bounded dependency-name/lint-inheritance readers and their spelling limits.
+
+`packages::check_edges` evaluates supplied package classes and dependency lists,
+external allowances and Pure feature pins. Consumers supply internal-edge
+permission/reason callbacks and retain their layout checks. Missing/duplicate/
+stale classifications, nonmember path dependencies, missing lint inheritance,
+Pure build scripts, unapproved dependencies/features and stale Effectful/Edge
+allowances fail. Declared/forwarded features are checked, not resolved transitive
+capabilities or default feature safety.
+
+An explicit forbidden-tooling package list is checked by package name even
+through dependency renames and across normal/build/dev kinds. Production cannot
+depend on those packages; Tooling may use them only as dev-dependencies. Local
+workspace Tooling classes are also forbidden dependency targets. The real
+consumer Cargo adapters and the native compiler inventories remain local.
