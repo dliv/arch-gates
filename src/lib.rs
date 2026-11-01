@@ -1,4 +1,5 @@
 //! Pure-source checks extracted from Workforest. Reads no files and starts no processes.
+pub mod graph;
 mod tokens;
 use std::collections::BTreeSet;
 use tokens::{
