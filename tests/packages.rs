@@ -570,9 +570,16 @@ fn members_parse_the_cargo_metadata_shape() {
         "not json",
         "{}",
         r#"{"workspace_root": "/ws", "packages": [{}]}"#,
-        r#"{"workspace_root": "/ws", "packages": [{"name": "app", "manifest_path": "/ws/Cargo.toml", "targets": [], "dependencies": [], "features": {"default": "compressed"}}]}"#,
+        r#"{"workspace_root": "/ws", "workspace_members": ["app-id"], "packages": [{"id": "app-id", "name": "app", "manifest_path": "/ws/Cargo.toml", "targets": [], "dependencies": [], "features": {"default": "compressed"}}]}"#,
     ] {
         let error = parse_members(malformed).expect_err("a malformed document is an error");
+        if malformed.contains(r#""default": "compressed""#) {
+            assert!(
+                error.contains("package app, feature default")
+                    && error.contains("enabled features"),
+                "wrong malformed-feature rejection: {error}"
+            );
+        }
         assert!(
             error.contains("cargo metadata"),
             "the error names cargo metadata: {error}"

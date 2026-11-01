@@ -3,24 +3,18 @@ use crate::metadata::{Dependency, DependencyKind, Member};
 use std::collections::BTreeMap;
 const SECTION: &str = "see consumer package policy";
 
-/// The architectural role of a whole workspace member.
+/// A workspace unit's role. Consumers own layout, containment and internal-edge policy.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CrateClass {
-    /// Only Pure modules, for one feature, at `crates/<feature>/<role>`. Depends only on Pure
-    /// crates of the same feature and on the external crates in `PURE_ALLOWED_CRATES`.
+    /// Pure decisions of the named feature; shared checks enforce declared Pure capabilities.
     Pure { feature: &'static str },
-    /// A feature's effectful workflow, at `crates/<feature>/<role>`. Depends only on Pure and
-    /// Effectful crates of the same feature and on the external crates in
-    /// `EFFECTFUL_ALLOWED_CRATES`.
+    /// Effectful workflows of the named feature.
     Effectful { feature: &'static str },
-    /// A client of one outside protocol, flat under `crates/`. Depends on no member and on the
-    /// external crates in `EDGE_ALLOWED_CRATES`.
+    /// A protocol boundary.
     Edge,
-    /// The package that builds the binaries. Holds only Root and Pure modules, so effectful
-    /// code lives in a library crate. Depends on any member except Tooling.
+    /// A composition/application package, including explicit local transition allowances.
     Binary,
-    /// Checks the other members and is never part of the product. Depends on no member, and
-    /// no member depends on it.
+    /// Development tooling; production dependencies on this role are prohibited.
     Tooling,
 }
 
