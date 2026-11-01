@@ -87,6 +87,107 @@ pub(crate) fn rust_code_tokens(source: &str) -> Vec<String> {
     tokens
 }
 
+/// Tokens of the file minus every test-only inline module: a `mod <name> { ... }` block
+/// whose outer attributes include exactly `#[cfg(test)]`, whatever other attributes come
+/// before or after it and whatever its visibility. The attributes are removed with it.
+pub(crate) fn production_tokens(source: &str) -> Vec<String> {
+    let tokens = rust_code_tokens(source);
+    let mut kept = Vec::with_capacity(tokens.len());
+    let mut index = 0;
+    while index < tokens.len() {
+        match test_module_end(&tokens, index) {
+            Some(end) => index = end,
+            None => {
+                kept.push(tokens[index].clone());
+                index += 1;
+            }
+        }
+    }
+    kept
+}
+
+/// If a test-only inline module starts at `start`, return the index just past its matching
+/// closing brace. Other attribute shapes and unterminated blocks remain production tokens.
+fn test_module_end(tokens: &[String], start: usize) -> Option<usize> {
+    let mut cursor = start;
+    let mut has_cfg_test = false;
+    while tokens.get(cursor).is_some_and(|token| token == "#") && tokens.get(cursor + 1)? == "[" {
+        let close = matching_close(tokens, cursor + 1, "[", "]")?;
+        has_cfg_test |= tokens[cursor + 2..close] == ["cfg", "(", "test", ")"];
+        cursor = close + 1;
+    }
+    if !has_cfg_test {
+        return None;
+    }
+    if tokens.get(cursor)? == "pub" {
+        cursor += 1;
+        if tokens.get(cursor)? == "(" {
+            cursor = matching_close(tokens, cursor, "(", ")")? + 1;
+        }
+    }
+    if tokens.get(cursor)? != "mod" {
+        return None;
+    }
+    token_identifier(tokens.get(cursor + 1)?)?;
+    let open = cursor + 2;
+    if tokens.get(open)? != "{" {
+        return None;
+    }
+    matching_close(tokens, open, "{", "}").map(|close| close + 1)
+}
+
+/// Find the matching close token for the pair opened at `open`.
+fn matching_close(
+    tokens: &[String],
+    open: usize,
+    open_token: &str,
+    close_token: &str,
+) -> Option<usize> {
+    let mut depth = 0_usize;
+    for (index, token) in tokens.iter().enumerate().skip(open) {
+        if token == open_token {
+            depth += 1;
+        } else if token == close_token {
+            depth -= 1;
+            if depth == 0 {
+                return Some(index);
+            }
+        }
+    }
+    None
+}
+
+pub(crate) fn is_stdin_path(path: &[String]) -> bool {
+    matches!(
+        path,
+        [root, io, name, ..] if root == "std" && io == "io" && (name == "stdin" || name == "Stdin")
+    )
+}
+
+/// The index just past a turbofish `::<...>` (balanced `<` and `>` tokens) starting at
+/// `index`, or `index` itself when none starts there.
+pub(crate) fn after_turbofish(tokens: &[String], index: usize) -> usize {
+    let starts_turbofish = tokens.get(index).is_some_and(|token| token == "::")
+        && tokens.get(index + 1).is_some_and(|token| token == "<");
+    if !starts_turbofish {
+        return index;
+    }
+    let mut depth = 0_usize;
+    for (cursor, token) in tokens.iter().enumerate().skip(index + 1) {
+        match token.as_str() {
+            "<" => depth += 1,
+            ">" => {
+                depth -= 1;
+                if depth == 0 {
+                    return cursor + 1;
+                }
+            }
+            _ => {}
+        }
+    }
+    index
+}
+
 pub(crate) fn identifier_end(source: &str, start: usize) -> Option<usize> {
     let mut characters = source.get(start..)?.char_indices();
     let (_, first) = characters.next()?;

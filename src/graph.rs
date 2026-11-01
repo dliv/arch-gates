@@ -1,6 +1,5 @@
 //! Pure coverage and direction checks. Discovery, roles and exceptions belong to callers.
-use crate::production_tokens;
-use crate::tokens::{normalized_path, positioned_use_imports, token_identifier};
+use crate::tokens::{normalized_path, positioned_use_imports, production_tokens, token_identifier};
 use std::collections::BTreeSet;
 
 #[derive(Clone, Debug, PartialEq, Eq)]

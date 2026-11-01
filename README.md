@@ -1,27 +1,38 @@
 # arch-gates
 
-Shared source checks for repository-owned Rust architecture policy. The first
-slice extracts Workforest's Pure scanner; Workforest and Slopid own file selection,
-policy, filesystem/process observation, native compiler controls and gate wiring.
+Shared source, graph, metadata and package checks for repository-owned Rust
+architecture policy. Workforest and Slopid own file selection, policy,
+filesystem/process observation, native compiler controls and gate wiring.
 
 `check_pure_source(file, source)` returns contextual `PureViolation` values.
 `pure_violations(source)` returns sorted, deduplicated forbidden source forms.
-Both are deterministic: no filesystem, environment, clock, network or process reads.
+`scan::root_ambient_violations(source, allowed_env)` checks the common Root
+profile and takes exact permitted `std::env` item names from the caller.
+`scan::external_crate_references(source, dependencies)` and
+`scan::trait_declarations(source)` discover production references and trait names.
+These functions are deterministic over supplied source and policy data: the
+engine opens no files, reads no environment or clock, and starts no process.
 Use this crate as a dev-dependency of a local policy crate and invoke it from that
 crate's tests. Its own tests are not automatically run by a dependent product.
 
 Run `just check` for formatting, all-target Clippy and locked tests. The tests
-carry Workforest's ordinary alias, import, path-effect, raw-identifier, literal,
-macro and test-module controls, plus the contextual API contract.
+cover ordinary aliases, grouped imports, path effects, raw identifiers, literals,
+macros, test-module skips, exact Root environment allowances, external references
+and trait declarations, plus the contextual Pure API contract.
 
-The scanner flags listed runtime std effects, standard input, named filesystem
-path methods, scan escapes and non-ASCII identifiers. It skips recognized inline
-`cfg(test)` modules and allows fixed build inputs such as `include_str!` and
-`env!`. It does not expand macros, resolve types, scan dependency internals or
-prove transitive purity. Same-named path methods may be reported on other types.
+The Pure scan flags its listed runtime `std` effects, standard input, named
+filesystem path methods, source escapes and non-ASCII identifiers. The Root scan
+flags filesystem, environment, network and thread paths plus the shared source
+escapes; the caller supplies its exact allowed environment item names, with no
+product defaults. Neither profile enforces Clippy-owned process, clock or stream
+controls. Scans skip recognized inline `cfg(test)` modules and allow fixed build
+inputs such as `include_str!` and `env!`. They do not expand macros, resolve types,
+scan dependency internals or prove transitive purity. Same-named path methods may
+be reported on other types. One private tokenizer and production-token filter
+serve the Pure, Root, external-reference and trait checks.
+
 The graph module adds source coverage and crate-local import direction checks.
-Root profiles and publication remain outside this slice. The private tokenizer is retained from Workforest;
-unmigrated donor checks remain in that product until separately transferred.
+Consumers keep the native compiler controls, policy data and local adapter code.
 
 This checkout currently has no published remote. Consumer pins to its local Git
 revision are a machine-local development checkpoint, not portable dependencies.
