@@ -34,8 +34,11 @@ serve the Pure, Root, external-reference and trait checks.
 The graph module adds source coverage and crate-local import direction checks.
 Consumers keep the native compiler controls, policy data and local adapter code.
 
-This checkout currently has no published remote. Consumer pins to its local Git
-revision are a machine-local development checkpoint, not portable dependencies.
+The canonical Git source is [dliv/arch-gates](https://github.com/dliv/arch-gates).
+Consumers pin a full immutable Git revision over HTTPS and lock it in Cargo.lock.
+They do not need an adjacent engine checkout or a local path override. Each
+consumer qualifies its assembled gate independently; this crate's tests do not
+establish another product's policy or platform coverage.
 
 ## Source coverage and direction
 
