@@ -4,8 +4,8 @@
 use std::collections::BTreeSet;
 
 use crate::tokens::{
-    after_turbofish, expand_std_paths, is_stdin_path, normalized_path, production_tokens,
-    std_aliases, token_identifier, use_imports,
+    ImportKind, after_turbofish, expand_std_paths, is_stdin_path, normalized_path,
+    production_tokens, std_aliases, token_identifier, use_imports,
 };
 
 const STDIN: &str = "std::io::stdin";
@@ -111,10 +111,9 @@ fn effect_violations(source: &str, profile: EffectProfile<'_>) -> Vec<String> {
             {
                 violations.insert("include!".to_owned());
             }
-            if let Some(name) = path
-                .last()
-                .filter(|name| EFFECTFUL_PATH_NAMES.contains(&name.as_str()))
-            {
+            if let Some(name) = path.last().filter(|name| {
+                import.kind == ImportKind::Name && EFFECTFUL_PATH_NAMES.contains(&name.as_str())
+            }) {
                 violations.insert(format!("path effect {name}"));
             }
         }
@@ -167,7 +166,13 @@ fn effect_violations(source: &str, profile: EffectProfile<'_>) -> Vec<String> {
             token_identifier(token).filter(|name| EFFECTFUL_PATH_NAMES.contains(name))
         {
             let previous = index.checked_sub(1).map(|before| tokens[before].as_str());
-            let after_path_separator = previous == Some("::");
+            // A module/type namespace component cannot itself be a filesystem query.
+            // Preserve terminal names and turbofish (`metadata::<T>`) as query forms.
+            let namespace_component = tokens.get(index + 1).is_some_and(|next| next == "::")
+                && tokens.get(index + 2).is_some_and(|next| {
+                    token_identifier(next).is_some() || matches!(next.as_str(), "{" | "*")
+                });
+            let after_path_separator = previous == Some("::") && !namespace_component;
             let called_as_method = previous == Some(".")
                 && tokens
                     .get(after_turbofish(&tokens, index + 1))

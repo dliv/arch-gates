@@ -269,10 +269,18 @@ pub(crate) fn skip_quoted(bytes: &[u8], index: &mut usize, delimiter: u8) {
     }
 }
 
+/// Syntax that distinguishes a terminal imported name from an explicit namespace import.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ImportKind {
+    Name,
+    Namespace,
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct UseImport {
     pub(crate) path: Vec<String>,
     pub(crate) alias: Option<String>,
+    pub(crate) kind: ImportKind,
 }
 
 pub(crate) fn token_identifier(token: &str) -> Option<&str> {
@@ -315,9 +323,11 @@ pub(crate) fn parse_use_tree(
 
     let mut path = prefix.to_vec();
     let mut first_segment = true;
+    let mut kind = ImportKind::Name;
     loop {
         if tokens.get(*cursor).is_some_and(|token| token == "*") {
             path.push("*".to_owned());
+            kind = ImportKind::Namespace;
             *cursor += 1;
             break;
         }
@@ -327,8 +337,11 @@ pub(crate) fn parse_use_tree(
         else {
             break;
         };
-        if !(first_segment && segment == "self" && !path.is_empty()) {
+        if first_segment && segment == "self" && !path.is_empty() {
+            kind = ImportKind::Namespace;
+        } else {
             path.push(tokens[*cursor].clone());
+            kind = ImportKind::Name;
         }
         first_segment = false;
         *cursor += 1;
@@ -351,7 +364,7 @@ pub(crate) fn parse_use_tree(
         None
     };
     if !path.is_empty() {
-        imports.push(UseImport { path, alias });
+        imports.push(UseImport { path, alias, kind });
     }
 }
 

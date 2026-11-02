@@ -128,3 +128,66 @@ fn root_environment_namespace_and_test_module_behavior_are_exact() {
         vec!["std::fs"]
     );
 }
+
+#[test]
+fn path_query_names_used_as_namespace_components_are_not_effects() {
+    for source in [
+        "use crate::metadata::{Dependency, DependencyKind, Member};",
+        "fn f(_: crate::metadata::Member) {}",
+        "use super::metadata::{self, Member};",
+        "use super::metadata::{self as records, Member};",
+        "use crate::metadata::*;",
+        "use crate::{metadata::{Member, Dependency}, graph::Edge};",
+        "type Record = foreign::metadata::Record;",
+        "type Record = foreign::canonicalize::Record;",
+    ] {
+        assert_eq!(
+            arch_gates::pure_violations(source),
+            Vec::<String>::new(),
+            "Pure: {source}"
+        );
+        assert_eq!(
+            root_ambient_violations(source, &[]),
+            Vec::<String>::new(),
+            "Root: {source}"
+        );
+    }
+}
+
+#[test]
+fn terminal_path_queries_still_report_calls_values_imports_and_turbofish() {
+    for source in [
+        "fn f(p: &Path) { let _ = p.metadata(); }",
+        "fn f(p: &Path) { let _ = p.metadata::<()>(); }",
+        "fn f(p: &Path) { let _ = Path::metadata(p); }",
+        "fn f(p: &Path) { let _ = Path::metadata::<()>(p); }",
+        "fn f() { let _inspect = Path::metadata; }",
+        "fn f() { let _inspect = Path::metadata::<()>; }",
+        "use crate::reader::metadata as inspect;",
+        "use crate::reader::{metadata as inspect};",
+    ] {
+        for found in [
+            arch_gates::pure_violations(source),
+            root_ambient_violations(source, &[]),
+        ] {
+            assert!(
+                found.iter().any(|form| form == "path effect metadata"),
+                "{source}: {found:?}"
+            );
+        }
+    }
+    for source in [
+        "fn f() { let _ = std::path::absolute(\"x\"); }",
+        "use std::path::absolute as locate;",
+    ] {
+        for found in [
+            arch_gates::pure_violations(source),
+            root_ambient_violations(source, &[]),
+        ] {
+            assert!(
+                found.iter().any(|form| form == "path effect absolute"),
+                "{source}: {found:?}"
+            );
+        }
+    }
+}
